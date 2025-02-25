@@ -3,3 +3,7 @@
 
 node_modules
 dist
+
+db.json
+/packages/*/dist
+/packages/*/node_modules
