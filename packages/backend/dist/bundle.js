@@ -27742,7 +27742,7 @@ var require_sender = __commonJS({
   "../../node_modules/ws/lib/sender.js"(exports2, module2) {
     "use strict";
     var { Duplex } = require("stream");
-    var { randomFillSync } = require("crypto");
+    var { randomFillSync: randomFillSync2 } = require("crypto");
     var PerMessageDeflate = require_permessage_deflate();
     var { EMPTY_BUFFER } = require_constants();
     var { isValidStatusCode } = require_validation();
@@ -27809,7 +27809,7 @@ var require_sender = __commonJS({
               if (randomPool === void 0) {
                 randomPool = Buffer.alloc(RANDOM_POOL_SIZE);
               }
-              randomFillSync(randomPool, 0, RANDOM_POOL_SIZE);
+              randomFillSync2(randomPool, 0, RANDOM_POOL_SIZE);
               randomPoolPointer = 0;
             }
             mask[0] = randomPool[randomPoolPointer++];
@@ -38509,13 +38509,96 @@ var init_node2 = __esm({
   }
 });
 
+// ../../node_modules/uuid/dist/esm/stringify.js
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+var byteToHex;
+var init_stringify = __esm({
+  "../../node_modules/uuid/dist/esm/stringify.js"() {
+    byteToHex = [];
+    for (let i = 0; i < 256; ++i) {
+      byteToHex.push((i + 256).toString(16).slice(1));
+    }
+  }
+});
+
+// ../../node_modules/uuid/dist/esm/rng.js
+function rng() {
+  if (poolPtr > rnds8Pool.length - 16) {
+    (0, import_crypto.randomFillSync)(rnds8Pool);
+    poolPtr = 0;
+  }
+  return rnds8Pool.slice(poolPtr, poolPtr += 16);
+}
+var import_crypto, rnds8Pool, poolPtr;
+var init_rng = __esm({
+  "../../node_modules/uuid/dist/esm/rng.js"() {
+    import_crypto = require("crypto");
+    rnds8Pool = new Uint8Array(256);
+    poolPtr = rnds8Pool.length;
+  }
+});
+
+// ../../node_modules/uuid/dist/esm/native.js
+var import_crypto2, native_default;
+var init_native = __esm({
+  "../../node_modules/uuid/dist/esm/native.js"() {
+    import_crypto2 = require("crypto");
+    native_default = { randomUUID: import_crypto2.randomUUID };
+  }
+});
+
+// ../../node_modules/uuid/dist/esm/v4.js
+function v4(options, buf, offset) {
+  var _a;
+  if (native_default.randomUUID && !buf && !options) {
+    return native_default.randomUUID();
+  }
+  options = options || {};
+  const rnds = options.random ?? ((_a = options.rng) == null ? void 0 : _a.call(options)) ?? rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  if (buf) {
+    offset = offset || 0;
+    if (offset < 0 || offset + 16 > buf.length) {
+      throw new RangeError(`UUID byte range ${offset}:${offset + 15} is out of buffer bounds`);
+    }
+    for (let i = 0; i < 16; ++i) {
+      buf[offset + i] = rnds[i];
+    }
+    return buf;
+  }
+  return unsafeStringify(rnds);
+}
+var v4_default;
+var init_v4 = __esm({
+  "../../node_modules/uuid/dist/esm/v4.js"() {
+    init_native();
+    init_rng();
+    init_stringify();
+    v4_default = v4;
+  }
+});
+
+// ../../node_modules/uuid/dist/esm/index.js
+var init_esm = __esm({
+  "../../node_modules/uuid/dist/esm/index.js"() {
+    init_v4();
+  }
+});
+
 // src/db.ts
-var adapter, db, initDB, saveRoom, deleteRoom, getRoom, getJoinedRooms;
+var adapter, db, initDB, saveRoom, saveUser, createUser, getUser, deleteRoom, getRoom, getJoinedRooms;
 var init_db = __esm({
   "src/db.ts"() {
     "use strict";
     init_lib();
     init_node2();
+    init_esm();
     adapter = new JSONFile("db.json");
     db = new Low(adapter, { rooms: [], users: [] });
     initDB = async () => {
@@ -38531,6 +38614,23 @@ var init_db = __esm({
         db.data.rooms.push(room);
       }
       await db.write();
+    };
+    saveUser = async (user) => {
+      const index = db.data.users.findIndex((u) => u.uid === user.uid);
+      if (index !== -1) {
+        db.data.users[index] = user;
+      } else {
+        db.data.users.push(user);
+      }
+      await db.write();
+    };
+    createUser = async (username) => {
+      const uid = v4_default();
+      saveUser({ uid, username });
+      return { uid, username };
+    };
+    getUser = (userId) => {
+      return db.data.users.find((u) => u.uid === userId);
     };
     deleteRoom = async (roomId) => {
       db.data.rooms = db.data.rooms.filter((r) => r.id !== roomId);
@@ -38550,6 +38650,7 @@ var require_server2 = __commonJS({
   "src/server.ts"() {
     "use strict";
     var import_express = __toESM(require_express2());
+    var import_body_parser = __toESM(require_body_parser());
     var import_http = require("http");
     init_wrapper();
     init_db();
@@ -38559,11 +38660,55 @@ var require_server2 = __commonJS({
     initDB().then(() => console.log("Database initialized"));
     var app = (0, import_express.default)();
     var httpServer = (0, import_http.createServer)(app);
+    app.use(import_body_parser.default.json());
     var io2 = new Server(httpServer, {
       cors: { origin: "*" }
     });
     app.get("/health", (_, res) => {
       res.send("OK");
+    });
+    app.get("/users/:userId", (req, res) => {
+      const userId = req.params.userId;
+      const user = getUser(userId);
+      if (user) {
+        res.json(user);
+      } else {
+        res.status(404).send("User not found");
+      }
+    });
+    app.post("/users/:userId", (req, res) => {
+      const userId = req.params.userId;
+      const userName = req.body.userName;
+      saveUser({ uid: userId, username: userName });
+      res.send("User created");
+    });
+    app.post("/users", async (req, res) => {
+      const userName = req.body.userName;
+      const user = await createUser(userName);
+      res.json(user);
+    });
+    app.post("/rooms", (req, res) => {
+      const roomId = req.body.roomId;
+      const userId = req.body.userId;
+      const room = { id: roomId, owner: userId, peers: [] };
+      saveRoom(room);
+      res.status(201).send("Room created");
+    });
+    app.get("/rooms", (req, res) => {
+      const userId = req.query.userId;
+      const rooms = getJoinedRooms(userId);
+      if (!rooms || rooms.length === 0) {
+        res.status(404).send("No rooms found");
+      }
+      res.json(rooms);
+    });
+    app.get("/rooms/:roomId", (req, res) => {
+      const roomId = req.params.roomId;
+      const room = getRoom(roomId);
+      if (!room) {
+        res.status(404).send("Room not found");
+      }
+      res.json(room);
     });
     io2.on("connection", (socket) => {
       console.log(`Socket connected: ${socket.id}`);
@@ -38643,7 +38788,7 @@ var require_server2 = __commonJS({
         }
       }
     }, HEARTBEAT_INTERVAL);
-    var PORT = process.env.PORT || 3e3;
+    var PORT = process.env.PORT || 3001;
     httpServer.listen(PORT, () => {
       console.log(`Server listening on port ${PORT}`);
     });

@@ -1,7 +1,17 @@
 import express from 'express';
+import bodyParser from 'body-parser';
 import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
-import { initDB, saveRoom, deleteRoom, getRoom, getJoinedRooms } from './db';
+import {
+  initDB,
+  saveRoom,
+  deleteRoom,
+  getRoom,
+  getJoinedRooms,
+  getUser,
+  saveUser,
+  createUser,
+} from './db';
 import { Room } from './interfaces';
 
 const HEARTBEAT_INTERVAL = 5000; // milliseconds: how often we expect a heartbeat
@@ -13,6 +23,7 @@ initDB().then(() => console.log('Database initialized'));
 
 const app = express();
 const httpServer = createServer(app);
+app.use(bodyParser.json());
 
 const io = new Server(httpServer, {
   cors: { origin: '*' },
@@ -21,6 +32,60 @@ const io = new Server(httpServer, {
 // Health endpoing
 app.get('/health', (_, res) => {
   res.send('OK');
+});
+
+app.get('/users/:userId', (req, res) => {
+  const userId = req.params.userId;
+  const user = getUser(userId);
+  if (user) {
+    res.json(user);
+  } else {
+    res.status(404).send('User not found');
+  }
+});
+
+app.post('/users/:userId', (req, res) => {
+  const userId = req.params.userId;
+  const userName = req.body.userName;
+  saveUser({ uid: userId, username: userName });
+  res.send('User created');
+});
+
+app.post('/users', async (req, res) => {
+  const userName = req.body.userName;
+  const user = await createUser(userName);
+  res.json(user);
+});
+
+app.post('/rooms', (req, res) => {
+  const roomId = req.body.roomId;
+  const userId = req.body.userId;
+  const room: Room = { id: roomId, owner: userId, peers: [] };
+  saveRoom(room);
+
+  res.status(201).send('Room created');
+});
+
+app.get('/rooms', (req, res) => {
+  const userId = req.query.userId as string;
+  const rooms = getJoinedRooms(userId);
+
+  if (!rooms || rooms.length === 0) {
+    res.status(404).send('No rooms found');
+  }
+
+  res.json(rooms);
+});
+
+app.get('/rooms/:roomId', (req, res) => {
+  const roomId = req.params.roomId;
+  const room = getRoom(roomId);
+
+  if (!room) {
+    res.status(404).send('Room not found');
+  }
+
+  res.json(room);
 });
 
 io.on('connection', (socket: Socket) => {
@@ -128,7 +193,7 @@ setInterval(async () => {
   }
 }, HEARTBEAT_INTERVAL);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });

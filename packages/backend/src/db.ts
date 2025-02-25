@@ -3,6 +3,7 @@
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import { DataSchema, Room, User } from './interfaces';
+import { v4 as uuidv4 } from 'uuid';
 
 const adapter = new JSONFile<DataSchema>('db.json');
 export const db = new Low<DataSchema>(adapter, { rooms: [], users: [] });
@@ -32,6 +33,13 @@ export const saveUser = async (user: User) => {
   }
 
   await db.write();
+};
+
+export const createUser = async (username: string) => {
+  const uid = uuidv4();
+
+  saveUser({ uid, username });
+  return { uid, username };
 };
 
 export const getUser = (userId: string) => {
