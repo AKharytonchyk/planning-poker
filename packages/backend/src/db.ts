@@ -38,8 +38,16 @@ export const saveUser = async (user: User) => {
 export const createUser = async (username: string) => {
   const uid = uuidv4();
 
-  saveUser({ uid, username });
+  await saveUser({ uid, username });
   return { uid, username };
+};
+
+export const createRoom = async (userId: string) => {
+  const id = uuidv4();
+  const peers = [userId];
+
+  await saveRoom({ id, peers, owner: userId });
+  return { id, peers, owner: userId };
 };
 
 export const getUser = (userId: string) => {

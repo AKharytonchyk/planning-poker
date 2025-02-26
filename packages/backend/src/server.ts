@@ -11,8 +11,9 @@ import {
   getUser,
   saveUser,
   createUser,
+  createRoom,
 } from './db';
-import { Room } from './interfaces';
+import { Room, User } from './interfaces';
 
 const HEARTBEAT_INTERVAL = 5000; // milliseconds: how often we expect a heartbeat
 const HEARTBEAT_TIMEOUT = 15000; // milliseconds: if no heartbeat received, consider user offline
@@ -57,13 +58,32 @@ app.post('/users', async (req, res) => {
   res.json(user);
 });
 
-app.post('/rooms', (req, res) => {
-  const roomId = req.body.roomId;
+app.post('/rooms', async (req, res) => {
   const userId = req.body.userId;
-  const room: Room = { id: roomId, owner: userId, peers: [] };
+  const room = await createRoom(userId);
+
+  res.json(room);
+});
+
+app.post('/rooms/:roomId', (req, res) => {
+  const roomId = req.params.roomId;
+  const userId = req.body.userId;
+  const peers = req.body.peers;
+  const room = getRoom(roomId);
+
+  if (!room) {
+    res.status(404).send('Room not found');
+    return;
+  }
+
+  if (room.owner !== userId) {
+    res.status(403).send('Permission denied');
+  }
+
+  room.peers = peers;
   saveRoom(room);
 
-  res.status(201).send('Room created');
+  res.status(200).json(room);
 });
 
 app.get('/rooms', (req, res) => {
@@ -92,30 +112,31 @@ io.on('connection', (socket: Socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
   // When a client joins a room, they should send both roomId and userId.
-  socket.on('join-room', async (roomId: string, userId: string) => {
-    console.log(`User ${userId} joining room ${roomId}`);
+  socket.on(
+    'join-room',
+    async ({ roomId, user }: { roomId: string; user: User }) => {
+      console.log(`User ${user.username} joining room ${roomId}`);
 
-    let room: Room | undefined = getRoom(roomId);
-    if (!room) {
-      // Create a new room with this user as the owner.
-      room = { id: roomId, owner: userId, peers: [] };
-    }
+      const room: Room | undefined = getRoom(roomId);
 
-    // Add this socket if not already present.
-    if (!room.peers.includes(socket.id)) {
-      room.peers.push(socket.id);
-    }
-    await saveRoom(room);
+      if (!room) return;
 
-    heartbeats.set(socket.id, Date.now());
+      if (!room.peers.includes(socket.id)) {
+        room.peers.push(socket.id);
+      }
 
-    socket.join(roomId);
-    socket.to(roomId).emit('peer-joined', { socketId: socket.id, userId });
-  });
+      await saveRoom(room);
+
+      heartbeats.set(socket.id, Date.now());
+
+      socket.join(roomId);
+      socket.to(roomId).emit('peer-joined', { socketId: socket.id, userId });
+    },
+  );
 
   // Client sends periodic heartbeat events
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   socket.on('heartbeat', (data: { roomId: string; userId: string }) => {
+    console.log(`Heartbeat from ${data.userId}`);
     heartbeats.set(socket.id, Date.now());
   });
 

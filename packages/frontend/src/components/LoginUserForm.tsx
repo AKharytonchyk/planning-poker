@@ -1,6 +1,9 @@
 import { TextInput, Group, Button, Paper, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { getUser } from '../api';
+import { useContext } from 'react';
+import { UserContext } from '../context/UserContext';
+import { useNavigate } from '@tanstack/react-router';
 
 export type LoginUserFormProps = {
   handleCreateUid: () => void;
@@ -25,10 +28,15 @@ export const LoginUserForm: React.FC<LoginUserFormProps> = ({
     },
   });
 
+  const { setUser } = useContext(UserContext);
+  const navigate = useNavigate();
+
   const onSubmit = async (values: { UID: string }) => {
     try {
       const user = await getUser(values.UID);
-      console.log(user);
+      setUser(user);
+
+      navigate({ to: '/' });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       form.setErrors({ UID: error.message });

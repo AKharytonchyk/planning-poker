@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node14 --outfile=dist/bundle.js",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/bundle.js",
+    "build:dev": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/bundle.js --watch",
     "start": "node dist/bundle.js"
   },
   "keywords": [],
@@ -19,5 +20,9 @@
     "lowdb": "^7.0.1",
     "socket.io": "^4.8.1",
     "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "nodemon": "^3.1.9"
   }
 }

@@ -1,7 +1,9 @@
 import { Paper, Title, TextInput, Group, Button } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import React from 'react';
+import React, { useContext } from 'react';
 import { createUser } from '../api';
+import { useNavigate } from '@tanstack/react-router';
+import { UserContext } from '../context/UserContext';
 
 export type CreateUserFormProps = {
   handleCancel: () => void;
@@ -23,10 +25,14 @@ export const CreateUserForm: React.FC<CreateUserFormProps> = ({
     },
   });
 
+  const { setUser } = useContext(UserContext);
+  const navigate = useNavigate();
+
   const onSubmit = async (values: { username: string }) => {
     try {
       const user = await createUser(values.username);
-      console.log(user);
+      setUser(user);
+      navigate({ to: '/' });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       form.setErrors({ username: error.message });

@@ -13,8 +13,10 @@
   "devDependencies": {
     "@tanstack/router-devtools": "^1.111.6",
     "@tanstack/router-plugin": "^1.111.6",
+    "@types/crypto-js": "^4.2.2",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@types/simple-peer": "^9.11.8",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "postcss": "^8.5.3",
@@ -29,8 +31,10 @@
     "@mantine/hooks": "^7.17.0",
     "@tanstack/react-router": "^1.111.6",
     "axios": "^1.7.9",
+    "crypto-js": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "simple-peer": "^9.11.1",
     "socket.io-client": "^4.8.1",
     "uuid": "^11.1.0"
   }

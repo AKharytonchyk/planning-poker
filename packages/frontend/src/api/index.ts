@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { User } from '../context/UserContext';
+import { Session } from '../models/Session';
 
 const api = axios.create({
   baseURL: 'http://localhost:3000/api',
@@ -36,17 +38,26 @@ export const createUser = async (userName: string) => {
 };
 
 export const getUser = async (userId: string) => {
-  return api.get(`/users/${userId}`);
+  try {
+    const response = await api.get(`/users/${userId}`);
+    if (response.status === 404) {
+      return null;
+    }
+
+    return response.data;
+  } catch (error) {
+    return null;
+  }
 };
 
-export const createRoom = async (roomId: string, userId: string) => {
-  return api.post('/rooms', { roomId, userId });
+export const createRoom = async (userId: string) => {
+  return (await api.post('/rooms', { userId })).data;
 };
 
 export const getRooms = async (userId: string) => {
-  return api.get('/rooms', { params: { userId } });
+  return api.get<Session>('/rooms', { params: { userId } });
 };
 
 export const getRoom = async (roomId: string) => {
-  return api.get(`/rooms/${roomId}`);
+  return (await api.get(`/rooms/${roomId}`)).data;
 };

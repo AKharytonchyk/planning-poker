@@ -1,30 +1,76 @@
 import React, { useState, useEffect } from 'react';
-import { Container, TextInput, Button, Title, Text, Group, Paper } from '@mantine/core';
-import { v4 as uuidv4 } from 'uuid';
+import {
+  Container,
+  TextInput,
+  Button,
+  Title,
+  Text,
+  Group,
+  Paper,
+} from '@mantine/core';
+import { useStorage } from '../hooks/useStorage';
+import { User } from '../context/UserContext';
+import { useNavigate } from '@tanstack/react-router';
+import { createRoom, getRoom, getUser } from '../api';
+import { useForm } from '@mantine/form';
 
 const Home: React.FC = () => {
   const [uid, setUid] = useState<string>('');
-  const [inputValue, setInputValue] = useState<string>('');
+  const navigate = useNavigate();
+  const [storedValue] = useStorage<User | null>('user', null);
+  const form = useForm({
+    mode: 'uncontrolled',
+    initialValues: {
+      SID: '',
+    },
+    validate: {
+      SID: (value) =>
+        value &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          value,
+        )
+          ? null
+          : 'SID must be a valid UID v4',
+    },
+  });
 
   useEffect(() => {
-    // Check if a UID is stored in localStorage
-    const storedUid = localStorage.getItem('uid');
-    if (storedUid) {
-      setUid(storedUid);
-    }
-  }, []);
+    if (!storedValue) {
+      navigate({ to: '/login' });
+    } else {
+      const checkUser = async () => {
+        const user = await getUser(storedValue.uid);
 
-  const handleCreateUid = () => {
-    const newUid = uuidv4();
-    setUid(newUid);
-    localStorage.setItem('uid', newUid);
+        console.log('USER!!!', user);
+        if (!user) {
+          navigate({ to: '/login' });
+        } else {
+          setUid(storedValue.uid);
+        }
+      };
+
+      checkUser();
+    }
+  }, [storedValue]);
+
+  const handleCreateNewSession = async () => {
+    const session = await createRoom(uid);
+
+    if (!session) {
+      return;
+    }
+
+    navigate({ to: '/sessions/$sessionId', params: { sessionId: session.id } });
   };
 
-  const handleSetUid = () => {
-    if (inputValue.trim()) {
-      setUid(inputValue);
-      localStorage.setItem('uid', inputValue);
+  const handleSubmit = async (values: { SID: string }) => {
+    const session = await getRoom(values.SID);
+
+    if (!session) {
+      return;
     }
+
+    navigate({ to: '/sessions/$sessionId', params: { sessionId: session.id } });
   };
 
   return (
@@ -32,30 +78,31 @@ const Home: React.FC = () => {
       <Paper shadow="sm" p="lg">
         <Title mb="md">
           Welcome to Planning Poker
+          {storedValue?.username ? `, ${storedValue.username}` : ''}
         </Title>
-        {uid ? (
-          <div>
-            <Title order={3}>Your UID:</Title>
-            <Text size="lg" mt="sm">
-              {uid}
-            </Text>
-          </div>
-        ) : (
-          <div>
-            <TextInput
-              label="Enter your UID"
-              placeholder="Enter UID"
-              value={inputValue}
-              onChange={(event) => setInputValue(event.currentTarget.value)}
-            />
-            <Group mt="md">
-              <Button onClick={handleSetUid}>Submit UID</Button>
-              <Button variant="outline" onClick={handleCreateUid}>
-                Create New UID
-              </Button>
-            </Group>
-          </div>
-        )}
+        <Text size="lg" mb="md">
+          This is a simple planning poker app. You can create a new session and
+          share the SID with your team to join the session.
+        </Text>
+        <Text size="lg" mb="md">
+          Do you want to start a new session or join an existing one?
+        </Text>
+
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <TextInput
+            withAsterisk
+            label="Session ID"
+            placeholder="Enter session ID"
+            key={form.key('SID')}
+            {...form.getInputProps('SID')}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button type="submit">Join session</Button>
+            <Button variant="outline" onClick={handleCreateNewSession}>
+              Create session
+            </Button>
+          </Group>
+        </form>
       </Paper>
     </Container>
   );
