@@ -13,14 +13,25 @@ import { createRoom } from '../api/createRoom';
 import { QRCodeSVG } from 'qrcode.react';
 import { IconCopy, IconDoorExit } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useDebouncedCallback } from '@mantine/hooks';
+import { useDebouncedCallback, useLocalStorage } from '@mantine/hooks';
 import { ModalProps } from '../types/ModalProps';
+import { Room } from '../types/Room';
+import { useStorage } from '../hooks/useStorage';
 
 export const CreateModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [roomUID, setRoomUID] = useState<string | null>(null);
   const [sharableLink, setSharableLink] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const [_, setRoomOwnerData] = useStorage<Record<string, Room>>({
+    key: 'room-owner-id',
+    defaultValue: {},
+  });
+
+  const handleUpdateRoomData = (data: Room) => {
+    setRoomOwnerData((current) => ({ ...current, [data.roomId]: data }));
+  };
 
   const form = useForm({
     initialValues: {
@@ -36,10 +47,14 @@ export const CreateModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const handleSubmit = async (values: { name: string; roomName: string }) => {
     setLoading(true);
     try {
-      const { uid } = await createRoom(values.name, values.roomName);
-      const link = `${window.location.origin}/rooms/=${uid}`;
-      setRoomUID(uid);
+      const { roomId, roomName, ownerToken } = await createRoom(
+        values.name,
+        values.roomName
+      );
+      const link = `${window.location.origin}/rooms/=${roomId}`;
+      setRoomUID(roomId);
       setSharableLink(link);
+      handleUpdateRoomData({ roomId, roomName, ownerToken, users: [] });
     } catch (error) {
       console.error('Failed to create room:', error);
     } finally {

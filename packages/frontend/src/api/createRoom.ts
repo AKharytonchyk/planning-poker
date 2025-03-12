@@ -1,6 +1,6 @@
-export type CreateRoomResponse = {
-  uid: string;
-};
+import { Room } from '../types/Room';
+
+export type CreateRoomResponse = Room;
 
 export const createRoom = async (
   name: string,

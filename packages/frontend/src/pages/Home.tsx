@@ -1,7 +1,6 @@
 import { Title, Text, Stack, List, ThemeIcon, Box, Space } from '@mantine/core';
 import {
   IconShare,
-  IconUserPlus,
   IconCards,
   IconEye,
   IconRepeat,

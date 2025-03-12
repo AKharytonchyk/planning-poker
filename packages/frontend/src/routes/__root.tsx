@@ -13,6 +13,7 @@ import {
 import {
   useDebouncedCallback,
   useDisclosure,
+  useLocalStorage,
   useMediaQuery,
 } from '@mantine/hooks';
 import {
@@ -24,6 +25,7 @@ import {
 } from '@tabler/icons-react';
 import { CreateModal } from '../components/CreateModal';
 import { JoinModal } from '../components/JoinModal';
+import { Room } from '../types/Room';
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -35,7 +37,6 @@ const mantineDark = createTheme({
 });
 
 function RootComponent() {
-  const [light, { toggle }] = useDisclosure(true);
   const isMobile = useMediaQuery('(max-width: 600px)');
   const [createOpened, { open: openCreate, close: closeCreate }] =
     useDisclosure(false);
@@ -49,6 +50,14 @@ function RootComponent() {
   const handleJoinRoom = useDebouncedCallback(() => {
     openJoin();
   }, 500);
+
+  const [colorScheme, setColorScheme] = useLocalStorage<'light' | 'dark'>({
+    key: 'color-scheme',
+    defaultValue: 'light',
+  });
+
+  const toggleColorScheme = () =>
+    setColorScheme((current) => (current === 'dark' ? 'light' : 'dark'));
 
   const CreateRoomButton = React.memo(() => (
     <Button
@@ -70,7 +79,7 @@ function RootComponent() {
       <MantineProvider
         theme={mantineDark}
         defaultColorScheme={'dark'}
-        forceColorScheme={light ? 'light' : 'dark'}
+        forceColorScheme={colorScheme}
       >
         <AppShell
           header={{ height: { base: 60, md: 70, lg: 80 } }}
@@ -92,8 +101,8 @@ function RootComponent() {
                 <Switch
                   size="md"
                   color="dark.4"
-                  checked={light}
-                  onChange={toggle}
+                  checked={colorScheme === 'dark'}
+                  onChange={toggleColorScheme}
                   onLabel={
                     <IconSun
                       size={16}
