@@ -1,16 +1,13 @@
 import { createFileRoute, useLoaderData } from '@tanstack/react-router';
-import { Room } from '../pages/Room';
+import { RoomPage } from '../pages/Room';
+import { fetchRoomDetails } from '../api/joinRoom';
 
 export const Route = createFileRoute('/rooms/$id')({
   component: RouteComponent,
   loader: async ({ params }) => {
-    console.log(params.id);
+    const roomData = await fetchRoomDetails(params.id);
 
-    return Promise.resolve({
-      uid: params.id,
-      name: 'Room Name',
-      owner: 'Owner Name',
-    });
+    return roomData ? roomData : { error: 'Room not found' };
   },
 });
 
@@ -19,6 +16,5 @@ function RouteComponent() {
     from: '/rooms/$id',
   });
 
-  console.log(data);
-  return <Room {...data} />;
+  return <RoomPage {...data} />;
 }

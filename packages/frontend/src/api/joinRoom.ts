@@ -1,4 +1,4 @@
-export const joinRoom = async (roomUID: string) => {
+export const fetchRoomDetails = async (roomUID: string) => {
   const response = await fetch(`/api/rooms/${roomUID}`);
   if (!response.ok) {
     throw new Error('Failed to join room');
